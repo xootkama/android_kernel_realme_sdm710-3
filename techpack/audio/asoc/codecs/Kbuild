@@ -195,7 +195,6 @@ KBUILD_EXTRA_SYMBOLS +=$(OUT)/obj/vendor/qcom/opensource/audio-kernel/soc/Module
 endif
 
 ifeq ($(KERNEL_BUILD), 1)
-	obj-y	+= sdm660_cdc/
 	obj-y	+= msm_sdw/
 endif
 # Module information used by KBuild framework
