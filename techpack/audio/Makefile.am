@@ -22,9 +22,6 @@ obj-m += dsp/codecs/
 obj-m += soc/
 obj-m += asoc/
 obj-m += asoc/codecs/
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sdm670 qcs605))
-obj-m += asoc/codecs/wcd934x/
-endif
 ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), apq8053 sdm670 qcs605 apq8009))
 obj-m += asoc/codecs/sdm660_cdc/
 endif
