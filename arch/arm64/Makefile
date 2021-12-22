@@ -14,29 +14,12 @@ LDFLAGS_vmlinux	:=--no-undefined -X
 CPPFLAGS_vmlinux.lds = -DTEXT_OFFSET=$(TEXT_OFFSET)
 GZFLAGS		:=-9
 
-ifeq ($(CONFIG_RELOCATABLE), y)
+iifeq ($(CONFIG_RELOCATABLE), y)
 # Pass --no-apply-dynamic-relocs to restore pre-binutils-2.27 behaviour
 # for relative relocs, since this leads to better Image compression
 # with the relocation offsets always being zero.
-LDFLAGS_vmlinux		+= -pie -shared -Bsymbolic \
+LDFLAGS_vmlinux		+= -shared -Bsymbolic -z notext -z norelro \
 			$(call ld-option, --no-apply-dynamic-relocs)
-endif
-
-ifeq ($(CONFIG_ARM64_ERRATUM_843419),y)
-  ifeq ($(call ld-option, --fix-cortex-a53-843419),)
-$(warning ld does not support --fix-cortex-a53-843419; kernel may be susceptible to erratum)
-  else
-    ifeq ($(call gold-ifversion, -lt, 114000000, y), y)
-$(warning This version of GNU gold may generate incorrect code with --fix-cortex-a53-843419;\
-	see https://sourceware.org/bugzilla/show_bug.cgi?id=21491)
-    endif
-LDFLAGS_vmlinux	+= --fix-cortex-a53-843419
-  endif
-else
-  ifeq ($(ld-name),gold)
-# Pass --no-fix-cortex-a53-843419 to ensure the erratum fix is disabled
-LDFLAGS	+= --no-fix-cortex-a53-843419
-  endif
 endif
 
 KBUILD_DEFCONFIG := defconfig
@@ -50,8 +33,7 @@ $(warning LSE atomics not supported by binutils)
   endif
 endif
 
-ifeq ($(CONFIG_COMPAT_VDSO), y)
-  CROSS_COMPILE_ARM32 ?= $(CONFIG_CROSS_COMPILE_ARM32:"%"=%)
+ifeq ($(cc-name),clang)
    # Check that the user has provided a valid prefix for the 32-bit toolchain.
   # To prevent selecting the system $(cc-name) by default, the prefix is not
   # allowed to be empty, unlike CROSS_COMPILE. In the unlikely event that the
@@ -89,22 +71,20 @@ KBUILD_CFLAGS	+= -mno-implicit-float
 else
 KBUILD_CFLAGS	+= -mgeneral-regs-only
 endif
-KBUILD_CFLAGS	+= $(lseinstr) $(vdso32)
+KBUILD_CFLAGS	+= $(lseinstr)
 KBUILD_CFLAGS	+= -fno-asynchronous-unwind-tables
 KBUILD_CFLAGS	+= $(call cc-option, -mpc-relative-literal-loads)
 KBUILD_CFLAGS	+= -fno-pic
-KBUILD_AFLAGS	+= $(lseinstr) $(vdso32)
+KBUILD_AFLAGS	+= $(lseinstr)
 
 ifeq ($(CONFIG_CPU_BIG_ENDIAN), y)
 KBUILD_CPPFLAGS	+= -mbig-endian
 AS		+= -EB
 LD		+= -EB
-UTS_MACHINE	:= aarch64_be
 else
 KBUILD_CPPFLAGS	+= -mlittle-endian
 AS		+= -EL
 LD		+= -EL
-UTS_MACHINE	:= aarch64
 endif
 
 CHECKFLAGS	+= -D__aarch64__
@@ -207,7 +187,6 @@ archclean:
 	$(Q)$(MAKE) $(clean)=$(boot)
 	$(Q)$(MAKE) $(clean)=$(boot)/dts
 
-ifeq ($(KBUILD_EXTMOD),)
 # We need to generate vdso-offsets.h before compiling certain files in kernel/.
 # In order to do that, we should use the archprepare target, but we can't since
 # asm-offsets.h is included in some files used to generate vdso-offsets.h, and
@@ -217,9 +196,6 @@ ifeq ($(KBUILD_EXTMOD),)
 prepare: vdso_prepare
 vdso_prepare: prepare0
 	$(Q)$(MAKE) $(build)=arch/arm64/kernel/vdso include/generated/vdso-offsets.h
-	$(if $(CONFIG_VDSO32),$(Q)$(MAKE) $(build)=arch/arm64/kernel/vdso32 \
-					  include/generated/vdso32-offsets.h)
-endif
 
 define archhelp
   echo  '* Image.gz      - Compressed kernel image (arch/$(ARCH)/boot/Image.gz)'
