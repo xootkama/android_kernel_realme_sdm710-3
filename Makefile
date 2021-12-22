@@ -1234,6 +1234,46 @@ PHONY += firmware_install
 firmware_install:
 	@mkdir -p $(objtree)/firmware
 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.fwinst obj=firmware __fw_install
+	
+# ---------------------------------------------------------------------------
+# Kernel headers
+
+#Default location for installed headers
+export INSTALL_HDR_PATH = $(objtree)/usr
+
+# If we do an all arch process set dst to asm-$(hdr-arch)
+hdr-dst = $(if $(KBUILD_HEADERS), dst=include/arch-$(hdr-arch), dst=include)
+
+PHONY += archheaders
+archheaders:
+
+PHONY += archscripts
+archscripts:
+
+PHONY += __headers
+__headers: $(version_h) scripts_basic asm-generic archheaders archscripts
+	$(Q)$(MAKE) $(build)=scripts build_unifdef
+
+PHONY += headers_install_all
+headers_install_all:
+	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/headers.sh install
+
+PHONY += headers_install
+headers_install: __headers
+	$(if $(wildcard $(srctree)/arch/$(hdr-arch)/include/uapi/asm/Kbuild),, \
+	  $(error Headers not exportable for the $(SRCARCH) architecture))
+	$(Q)$(MAKE) $(hdr-inst)=include/uapi
+	$(Q)$(MAKE) $(hdr-inst)=arch/$(hdr-arch)/include/uapi $(hdr-dst)
+	$(Q)$(MAKE) $(hdr-inst)=techpack
+
+PHONY += headers_check_all
+headers_check_all: headers_install_all
+	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/headers.sh check
+
+PHONY += headers_check
+headers_check: headers_install
+	$(Q)$(MAKE) $(hdr-inst)=include/uapi HDRCHECK=1
+	$(Q)$(MAKE) $(hdr-inst)=arch/$(hdr-arch)/include/uapi $(hdr-dst) HDRCHECK=1
 
 # ---------------------------------------------------------------------------
 # Kernel selftest
